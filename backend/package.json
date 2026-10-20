@@ -1,0 +1,34 @@
+{
+  "name": "revenue-dashboard-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Node.js + Express + PostgreSQL API for the weekly revenue trend dashboard",
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "nodemon --watch src src/server.js",
+    "start": "node src/server.js",
+    "db:create": "node db/create-db.js",
+    "db:migrate": "node db/migrate.js up",
+    "db:status": "node db/migrate.js status",
+    "db:seed": "node db/seed.js",
+    "db:reset": "node db/seed.js --reset",
+    "db:setup": "npm run db:create && npm run db:migrate && npm run db:seed",
+    "test": "node --test test/revenue.test.js",
+    "test:integration": "node --test test/api.integration.test.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  }
+}
