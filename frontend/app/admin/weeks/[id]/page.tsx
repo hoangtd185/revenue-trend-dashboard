@@ -1,9 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
-import { adminApi, errorMessage } from '@/lib/admin-api';
 import { formatWeekRange } from '@/lib/format';
 import WeekDaysTable from '@/components/admin/WeekDaysTable';
 import { useWeekEditor } from '@/components/admin/useWeekEditor';
@@ -12,24 +11,11 @@ import { EditorSkeleton } from '@/components/admin/Skeletons';
 function EditWeek() {
   const { id } = useParams<{ id: string }>();
   const search = useSearchParams();
-  const router = useRouter();
   const editor = useWeekEditor(
     Number(id),
     search.get('created') ? { kind: 'success', text: 'Week created. Fill in the daily numbers and save.' } : null,
   );
   const { week, notice } = editor;
-
-  async function remove() {
-    if (!week) return;
-    if (!window.confirm(`Delete the week of ${formatWeekRange(week.weekStart)}? This cannot be undone.`)) return;
-    try {
-      await adminApi.deleteWeek(week.id);
-      editor.discardChanges();
-      router.replace('/admin');
-    } catch (err) {
-      editor.setNotice({ kind: 'error', text: errorMessage(err, 'Could not delete the week') });
-    }
-  }
 
   if (editor.loadError) {
     return (
@@ -56,12 +42,9 @@ function EditWeek() {
           <p className="muted small">Last updated {new Date(week.updatedAt).toLocaleString()}</p>
         </div>
         <div className="a-head-actions">
-          <Link href={`/?week=${week.weekStart}`} target="_blank" className="a-btn a-btn-ghost">
-            Preview ↗
+          <Link href="/" target="_blank" className="a-btn a-btn-ghost">
+            View dashboard ↗
           </Link>
-          <button type="button" className="a-btn a-btn-danger" onClick={remove}>
-            Delete week
-          </button>
           <button
             type="button"
             className="a-btn a-btn-primary"

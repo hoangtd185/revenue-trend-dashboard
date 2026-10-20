@@ -4,7 +4,8 @@
  *   - one admin user (ADMIN_EMAIL / ADMIN_PASSWORD from .env, password is re-hashed on every run)
  *   - 4 weeks of sample revenue data ending with the current week
  *
- *   node db/seed.js          -> insert sample weeks that don't exist yet (safe to re-run)
+ *   node db/seed.js          -> insert the sample weeks only when the database has no weeks yet (safe to re-run,
+ *                               never brings back weeks an admin deleted)
  *   node db/seed.js --reset  -> delete ALL weeks first, then insert the sample data
  */
 const bcrypt = require('bcryptjs');
@@ -72,6 +73,13 @@ async function main() {
     if (reset) {
       await client.query('DELETE FROM report_weeks');
       console.log('Removed all existing weeks (--reset).');
+    } else {
+      const { rows } = await client.query('SELECT count(*)::int AS n FROM report_weeks');
+      if (rows[0].n > 0) {
+        await client.query('COMMIT');
+        console.log(`Database already has ${rows[0].n} week(s); sample data skipped (use --reset to reload it).`);
+        return;
+      }
     }
 
     const thisMonday = mondayOf(new Date());

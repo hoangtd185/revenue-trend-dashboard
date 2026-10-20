@@ -3,8 +3,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { normalizeDays, summarize, percentChange, buildTrend, validateDays } = require('../src/services/revenue');
 const { addDays, isMonday, mondayOf } = require('../src/utils/dates');
-const { parsePagination, paginated } = require('../src/utils/pagination');
-const { HttpError, errorBody } = require('../src/utils/httpError');
+const { errorBody } = require('../src/utils/httpError');
 
 test('normalizeDays always returns 7 days Mon..Sun and fills gaps with zeros', () => {
   const days = normalizeDays([{ day_index: 2, pos_revenue: 100, eatclub_revenue: 50, labour_cost: 30, covers: 4 }]);
@@ -91,19 +90,6 @@ test('date helpers', () => {
   assert.equal(mondayOf(new Date('2026-10-25T12:00:00Z')), '2026-10-19');
 });
 
-test('parsePagination defaults, offsets and bounds', () => {
-  assert.deepEqual(parsePagination({}), { page: 1, pageSize: 20, offset: 0 });
-  assert.deepEqual(parsePagination({ page: '3', pageSize: '10' }), { page: 3, pageSize: 10, offset: 20 });
-  assert.throws(() => parsePagination({ page: '0' }), (err) => err instanceof HttpError && err.status === 400);
-  assert.throws(() => parsePagination({ pageSize: '101' }), HttpError);
-  assert.throws(() => parsePagination({ pageSize: 'abc' }), HttpError);
-  assert.deepEqual(paginated([1, 2], { page: 1, pageSize: 2 }, 5).pagination, {
-    page: 1,
-    pageSize: 2,
-    totalItems: 5,
-    totalPages: 3,
-  });
-});
 
 test('errorBody always has the { error: { code, message } } shape', () => {
   assert.deepEqual(errorBody('NOT_FOUND', 'nope'), { error: { code: 'NOT_FOUND', message: 'nope' } });

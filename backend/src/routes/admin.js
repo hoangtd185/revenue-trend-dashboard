@@ -4,7 +4,6 @@ const { normalizeDays, summarize, validateDays } = require('../services/revenue'
 const { isMonday } = require('../utils/dates');
 const { requireAdmin } = require('../middleware/auth');
 const { badRequest, conflict, notFound, validationError } = require('../utils/httpError');
-const { parsePagination, paginated } = require('../utils/pagination');
 const asyncHandler = require('../utils/asyncHandler');
 
 const router = express.Router();
@@ -28,20 +27,20 @@ function serializeWeek(week, rows) {
   };
 }
 
-// GET /api/admin/weeks?page=&pageSize=
+// GET /api/admin/weeks  -> all weeks with totals, newest first
 router.get(
   '/weeks',
   asyncHandler(async (req, res) => {
-    const page = parsePagination(req.query);
-    const { rows, total } = await repo.listWeeks({ limit: page.pageSize, offset: page.offset });
-    const data = rows.map((w) => ({
-      id: w.id,
-      weekStart: w.week_start,
-      updatedAt: w.updated_at,
-      totalRevenue: Number(w.total_revenue),
-      totalCovers: Number(w.total_covers),
-    }));
-    res.json(paginated(data, page, total));
+    const rows = await repo.listWeeks();
+    res.json({
+      weeks: rows.map((w) => ({
+        id: w.id,
+        weekStart: w.week_start,
+        updatedAt: w.updated_at,
+        totalRevenue: Number(w.total_revenue),
+        totalCovers: Number(w.total_covers),
+      })),
+    });
   }),
 );
 
@@ -85,13 +84,5 @@ router.patch(
   }),
 );
 
-// DELETE /api/admin/weeks/:id  -> idempotent: 204 whether or not it existed
-router.delete(
-  '/weeks/:id',
-  asyncHandler(async (req, res) => {
-    await repo.deleteWeek(parseId(req.params.id));
-    res.status(204).end();
-  }),
-);
 
 module.exports = router;

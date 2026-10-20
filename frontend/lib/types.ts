@@ -56,8 +56,3 @@ export interface AdminWeek {
   days: AdminDay[];
   summary: SummaryValues;
 }
-
-export interface Paginated<T> {
-  data: T[];
-  pagination: { page: number; pageSize: number; totalItems: number; totalPages: number };
-}

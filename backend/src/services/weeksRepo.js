@@ -6,23 +6,18 @@ const WEEK_COLUMNS = 'id, week_start, created_at, updated_at';
 const DAY_COLUMNS =
   'day_index, pos_revenue, eatclub_revenue, labour_cost, covers, event_impact, event_note';
 
-/** One page of weeks (newest first) with their totals, plus the overall count. */
-async function listWeeks({ limit, offset }) {
-  const [{ rows }, count] = await Promise.all([
-    db.query(
-      `SELECT w.id, w.week_start, w.created_at, w.updated_at,
-              COALESCE(SUM(d.pos_revenue + d.eatclub_revenue), 0) AS total_revenue,
-              COALESCE(SUM(d.covers), 0)::int                     AS total_covers
-         FROM report_weeks w
-         LEFT JOIN daily_metrics d ON d.week_id = w.id
-        GROUP BY w.id
-        ORDER BY w.week_start DESC
-        LIMIT $1 OFFSET $2`,
-      [limit, offset],
-    ),
-    db.query('SELECT count(*)::int AS total FROM report_weeks'),
-  ]);
-  return { rows, total: count.rows[0].total };
+/** All weeks (newest first) with their totals. */
+async function listWeeks() {
+  const { rows } = await db.query(
+    `SELECT w.id, w.week_start, w.created_at, w.updated_at,
+            COALESCE(SUM(d.pos_revenue + d.eatclub_revenue), 0) AS total_revenue,
+            COALESCE(SUM(d.covers), 0)::int                     AS total_covers
+       FROM report_weeks w
+       LEFT JOIN daily_metrics d ON d.week_id = w.id
+      GROUP BY w.id
+      ORDER BY w.week_start DESC`,
+  );
+  return rows;
 }
 
 async function findWeekById(id) {
@@ -105,10 +100,6 @@ async function updateWeekDays(weekId, days) {
   });
 }
 
-async function deleteWeek(weekId) {
-  const { rowCount } = await db.query('DELETE FROM report_weeks WHERE id = $1', [weekId]);
-  return rowCount > 0;
-}
 
 module.exports = {
   listWeeks,
@@ -120,5 +111,4 @@ module.exports = {
   upsertDays,
   createWeek,
   updateWeekDays,
-  deleteWeek,
 };

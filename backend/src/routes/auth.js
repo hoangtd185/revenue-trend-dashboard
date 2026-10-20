@@ -2,7 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const db = require('../db');
 const config = require('../config');
-const { signToken, requireAdmin } = require('../middleware/auth');
+const { signToken } = require('../middleware/auth');
 const asyncHandler = require('../utils/asyncHandler');
 const { unauthorized, validationError, tooManyRequests } = require('../utils/httpError');
 
@@ -33,7 +33,7 @@ function recordFailure(ip) {
 const cookieOptions = () => ({
   httpOnly: true,
   sameSite: 'lax',
-  secure: config.isProduction,
+  secure: config.cookieSecure,
   path: '/',
   maxAge: 8 * 60 * 60 * 1000,
 });
@@ -75,10 +75,6 @@ router.post(
 router.post('/logout', (req, res) => {
   res.clearCookie(config.cookieName, { ...cookieOptions(), maxAge: undefined });
   res.status(204).end();
-});
-
-router.get('/me', requireAdmin, (req, res) => {
-  res.json({ user: req.admin });
 });
 
 module.exports = router;

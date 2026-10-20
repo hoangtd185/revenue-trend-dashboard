@@ -6,9 +6,8 @@ import { formatWeekRange } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
 
-export default async function HomePage({ searchParams }: { searchParams: Promise<{ week?: string }> }) {
-  const { week } = await searchParams;
-  const result = await fetchTrend(week);
+export default async function HomePage() {
+  const result = await fetchTrend();
 
   return (
     <main className="page">
@@ -20,7 +19,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
       </div>
 
       {result.ok ? (
-        // key forces a fresh mount (and grow-in animation) when switching weeks
+        // key forces a fresh mount (and grow-in animation) when a new week becomes the latest
         <RevenueTrendCard key={result.data.week.weekStart} data={result.data} />
       ) : (
         <div className="empty-state" role="status">

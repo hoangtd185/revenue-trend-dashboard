@@ -1,6 +1,6 @@
 'use client';
 
-import type { AdminDay, AdminWeek, AdminWeekSummary, Paginated } from './types';
+import type { AdminDay, AdminWeek, AdminWeekSummary } from './types';
 
 /** Mirrors the API error contract: { error: { code, message, details? } } */
 export class ApiError extends Error {
@@ -59,16 +59,13 @@ export const adminApi = {
   login: (email: string, password: string) =>
     request<{ user: AdminUser }>('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
   logout: () => request<void>('/auth/logout', { method: 'POST' }),
-  me: () => request<{ user: AdminUser }>('/auth/me'),
-  listWeeks: (page = 1, pageSize = 20) =>
-    request<Paginated<AdminWeekSummary>>(`/admin/weeks?page=${page}&pageSize=${pageSize}`),
+  listWeeks: () => request<{ weeks: AdminWeekSummary[] }>('/admin/weeks'),
   getWeek: (id: number) => request<{ week: AdminWeek }>(`/admin/weeks/${id}`),
   createWeek: (weekStart: string, days: DayInput[] = []) =>
     request<{ week: AdminWeek }>('/admin/weeks', { method: 'POST', body: JSON.stringify({ weekStart, days }) }),
   /** Partial update: only the days passed are changed. */
   updateDays: (id: number, days: DayInput[]) =>
     request<{ week: AdminWeek }>(`/admin/weeks/${id}`, { method: 'PATCH', body: JSON.stringify({ days }) }),
-  deleteWeek: (id: number) => request<void>(`/admin/weeks/${id}`, { method: 'DELETE' }),
 };
 
 /** Human-readable message for any thrown value. */

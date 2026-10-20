@@ -19,6 +19,8 @@ module.exports = {
   jwtSecret,
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '8h',
   cookieName: 'admin_token',
+  // Secure cookies need HTTPS; override with COOKIE_SECURE=false when running production mode over plain http (e.g. docker compose locally)
+  cookieSecure: process.env.COOKIE_SECURE ? process.env.COOKIE_SECURE === 'true' : isProduction,
   corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:3000',
   seedAdmin: {
     email: process.env.ADMIN_EMAIL || 'admin@example.com',

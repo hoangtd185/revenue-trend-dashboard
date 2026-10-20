@@ -134,8 +134,5 @@ export function useWeekEditor(weekId: number, initialNotice: Notice) {
     }
   }
 
-  /** Lets the caller navigate away after delete without the unsaved-changes prompt. */
-  const discardChanges = () => setRows(savedRows);
-
-  return { week, rows, errors, totals, dirty, hasErrors, saving, notice, loadError, updateRow, save, setNotice, discardChanges };
+  return { week, rows, errors, totals, dirty, hasErrors, saving, notice, loadError, updateRow, save };
 }

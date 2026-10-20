@@ -28,15 +28,33 @@ A small full-stack app that reproduces the **"This Week's Revenue Trend vs Previ
 
 **Admin**
 - Email + password login (bcrypt hashes, JWT in an `httpOnly` cookie, simple brute-force limit).
-- Paginated week list, add a week (any date → its Monday), edit the 7 days in a grid (POS, Eatclub, Labour, Covers, event impact + note) with live totals and inline validation, delete a week, preview any week on the dashboard.
+- Week list, add a week (any date → its Monday), edit the 7 days in a grid (POS, Eatclub, Labour, Covers, event impact + note) with live totals and inline validation.
 - Saving sends only the days that changed (`PATCH`), and a browser prompt warns before leaving with unsaved edits.
-- The dashboard shows the **most recent week** and compares it with the week right before it (`/?week=YYYY-MM-DD` shows a specific week).
+- The dashboard shows the **most recent week** and compares it with the week right before it.
 
 ![Admin – edit week](docs/admin-edit-week.png)
 
 ---
 
-## Install and run locally (fresh Linux / macOS)
+## Quick start with Docker (one command)
+
+Only [Docker](https://docs.docker.com/get-docker/) is needed (Docker Desktop on macOS/Windows, Docker Engine + Compose plugin on Linux).
+
+```bash
+docker compose up --build
+```
+
+This starts PostgreSQL, the API and the Next.js app. On every start the API creates the database if needed, applies pending migrations and seeds the admin user (sample weeks only go into an empty database).
+
+- Dashboard: <http://localhost:3000>
+- Admin: <http://localhost:3000/admin> — **admin@example.com / Admin@123**
+- API health: <http://localhost:4000/api/health>
+
+Stop with `Ctrl+C` (or `docker compose down`); `docker compose down -v` also deletes the database volume. Ports 3000, 4000 and 5432 must be free.
+
+---
+
+## Install and run locally without Docker (fresh Linux / macOS)
 
 You need **Node.js ≥ 20**, **npm** and **PostgreSQL ≥ 14**. The steps below assume nothing is installed.
 
@@ -77,10 +95,10 @@ sudo systemctl enable --now postgresql
 sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'postgres';"
 ```
 
-**Option C – Docker** (if you already have Docker)
+**Option C – only the database in Docker** (if you already have Docker)
 
 ```bash
-docker compose up -d        # from the project root, uses docker-compose.yml
+docker compose up -d db     # from the project root: starts just PostgreSQL
 ```
 
 Check it works:
@@ -106,7 +124,7 @@ What `db:setup` does:
 | --- | --- |
 | `npm run db:create` | Creates the database named in `DATABASE_URL` (`revenue_dashboard`) if it doesn't exist. |
 | `npm run db:migrate` | Applies every pending file in `db/migrations/*.sql` in order, each in a transaction, and records it in `schema_migrations`. Safe to re-run. |
-| `npm run db:seed` | Creates/updates the admin user from `.env` and inserts 4 sample weeks ending with the current week (existing weeks are left alone). |
+| `npm run db:seed` | Creates/updates the admin user from `.env` and, if the database has no weeks yet, inserts 4 sample weeks ending with the current week. |
 
 Other DB scripts: `npm run db:status` (list applied/pending migrations), `npm run db:reset` (delete all weeks and re-insert the sample data).
 
@@ -137,11 +155,13 @@ cd backend && NODE_ENV=production JWT_SECRET=$(openssl rand -hex 32) npm start
 cd frontend && npm run build && npm start
 ```
 
+In production mode the session cookie is `Secure` (HTTPS only). To try production mode over plain `http://localhost`, set `COOKIE_SECURE=false` for the API (the Docker setup does this).
+
 ### Tests
 
 ```bash
 cd backend
-npm test                      # unit tests: aggregation, validation, pagination, error shape (no DB needed)
+npm test                      # unit tests: aggregation, validation, error shape (no DB needed)
 
 # end-to-end API tests against a real, THROWAWAY database (it is created, migrated and reset):
 TEST_DATABASE_URL=postgres://postgres:postgres@localhost:5432/revenue_dashboard_test npm run test:integration
@@ -178,23 +198,20 @@ To change the schema, add a new file such as `002_add_something.sql` and run `np
 
 ### API
 
+Only what the view and the admin need:
+
 | Method | Path | Auth | Success | Description |
 | --- | --- | --- | --- | --- |
-| GET | `/api/health` | – | 200 | API + DB health |
-| GET | `/api/public/revenue-trend?week=YYYY-MM-DD` | – | 200 | Latest week (or the week containing `week`), previous-week values per day, KPI summary and % change |
-| GET | `/api/public/weeks?page=&pageSize=` | – | 200 | Paginated weeks that have data |
+| GET | `/api/public/revenue-trend` | – | 200 | Latest week, previous-week values per day, KPI summary and % change (the view) |
 | POST | `/api/auth/login` | – | 200 | `{ email, password }` → sets the `admin_token` cookie, returns `{ user, token }` |
 | POST | `/api/auth/logout` | – | 204 | Clears the cookie |
-| GET | `/api/auth/me` | admin | 200 | Current admin |
-| GET | `/api/admin/weeks?page=&pageSize=` | admin | 200 | Paginated weeks with totals, newest first |
-| POST | `/api/admin/weeks` | admin | 201 | `{ weekStart: 'YYYY-MM-DD' (Monday), days?: Day[] }` — days not sent are zeros |
-| GET | `/api/admin/weeks/:id` | admin | 200 | One week with its 7 days |
-| PATCH | `/api/admin/weeks/:id` | admin | 200 | `{ days: Day[] }` — only the days sent are changed |
-| DELETE | `/api/admin/weeks/:id` | admin | 204 | Idempotent delete |
+| GET | `/api/admin/weeks` | admin | 200 | All weeks with totals, newest first |
+| POST | `/api/admin/weeks` | admin | 201 | Create a week: `{ weekStart: 'YYYY-MM-DD' (Monday), days?: Day[] }` — days not sent are zeros |
+| GET | `/api/admin/weeks/:id` | admin | 200 | One week with its 7 days (for the editor) |
+| PATCH | `/api/admin/weeks/:id` | admin | 200 | Update data: `{ days: Day[] }` — only the days sent are changed |
+| GET | `/api/health` | – | 200 | API + DB health (used by the Docker health check) |
 
 `Day = { dayIndex: 0..6, posRevenue, eatclubRevenue, labourCost, covers, eventImpact: 'positive'|'negative'|null, eventNote }`.
-
-**Pagination:** `page` (1-based, default 1) and `pageSize` (1–100, default 20). Response: `{ data: [...], pagination: { page, pageSize, totalItems, totalPages } }`.
 
 **Errors** always have the same shape:
 
@@ -204,9 +221,9 @@ To change the schema, add a new file such as `002_add_something.sql` and run `np
 
 | Status | `code` | When |
 | --- | --- | --- |
-| 400 | `BAD_REQUEST` | Malformed JSON, bad id, bad query parameters |
+| 400 | `BAD_REQUEST` | Malformed JSON, bad id |
 | 401 | `UNAUTHORIZED` | Missing/expired session, wrong password |
-| 404 | `NOT_FOUND` | Unknown week or route |
+| 404 | `NOT_FOUND` | Unknown week or route, or no data published yet |
 | 409 | `CONFLICT` | A week with that start date already exists |
 | 422 | `VALIDATION_ERROR` | Body is well-formed but values are invalid |
 | 429 | `RATE_LIMITED` | Too many failed logins (10 per 15 min per IP) |
@@ -231,7 +248,6 @@ backend/
   src/services/revenue.js      pure aggregation + validation (unit tested)
   src/services/weeksRepo.js    SQL queries (single-statement bulk upsert)
   src/utils/httpError.js       the API error contract
-  src/utils/pagination.js
   test/                        unit + integration tests
 frontend/
   app/page.tsx                 public view (server component) + loading.tsx / error.tsx
@@ -249,7 +265,8 @@ docs/adr/                      architecture decision records (why plain SQL, coo
 ## Troubleshooting
 
 - **`password authentication failed for user "postgres"`** – the password in `DATABASE_URL` doesn't match. Re-run the `ALTER USER`/`CREATE ROLE` command from step 2 or edit `backend/.env`.
-- **`ECONNREFUSED 127.0.0.1:5432`** – PostgreSQL isn't running (`brew services start postgresql@16` / `sudo systemctl start postgresql` / `docker compose up -d`).
+- **`ECONNREFUSED 127.0.0.1:5432`** – PostgreSQL isn't running (`brew services start postgresql@16` / `sudo systemctl start postgresql` / `docker compose up -d db`).
+- **`docker compose up` says a port is already allocated** – something else uses 3000/4000/5432 (often a local PostgreSQL). Stop it, or change the left side of the port mapping in `docker-compose.yml` (e.g. `'5433:5432'`).
 - **Dashboard says "Cannot reach the API"** – start the backend (`cd backend && npm run dev`) and check `API_URL` in `frontend/.env.local`.
 - **Port already in use** – change `PORT` in `backend/.env` (and `API_URL` in the frontend) or run `npx next dev -p 3001` for Next.js.
 - **Google font download warning in dev** – harmless offline; the page falls back to the system font.
